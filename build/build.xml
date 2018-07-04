@@ -385,6 +385,7 @@
 		<!-- Keep in alphabetical order ;) -->
 		
 		<build-addon name="ascanrules" />
+		<build-addon name="authenticationhelper" />
 		<build-addon name="coreLang" />
 		<build-addon name="directorylistv1" />
 		<build-addon name="directorylistv2_3" />
@@ -459,6 +460,14 @@
 	
 	<target name="generate-wiki-ascanrules" description="Generates the wiki of active scan rules">
 		<generate-wiki-core addon="ascanrules" />
+	</target>
+	
+	<target name="deploy-authenticationhelper" description="deploy the authenticationhelper extension">
+		<build-deploy-addon name="authenticationhelper" />
+	</target>
+		
+	<target name="generate-wiki-authenticationhelper" description="Generates the wiki for authenticationhelper">
+		<generate-wiki addon="authenticationhelper" />
 	</target>
 
 	<target name="deploy-coreLang" description="deploy the  add-on">
