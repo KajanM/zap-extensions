@@ -1,0 +1,19 @@
+<zapaddon>
+	<name>Authentication Helper</name>
+	<version>1</version>
+	<status>alpha</status>
+	<description>Helps you to setup automatic authentication with a help of dynamic checklist. Also provides information about the authentication status.</description>
+	<author>ZAP Dev Team</author>
+	<url></url>
+	<changes>
+	<![CDATA[
+	]]>
+	</changes>
+	<extensions>
+		<extension>org.zaproxy.zap.extension.authenticationhelper.ExtensionAuthenticationHelper</extension>
+	</extensions>
+	<ascanrules/>
+	<pscanrules/>
+	<not-before-version>2.7.0</not-before-version>
+	<not-from-version></not-from-version>
+</zapaddon>
