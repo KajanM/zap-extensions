@@ -13,7 +13,9 @@
 		<extension>org.zaproxy.zap.extension.authenticationhelper.ExtensionAuthenticationHelper</extension>
 	</extensions>
 	<ascanrules/>
-	<pscanrules/>
+	<pscanrules>
+		<pscanrule>org.zaproxy.zap.extension.authenticationhelper.autoconfig.AutomaticAuthenticationConfigurer</pscanrule>
+	</pscanrules>
 	<not-before-version>2.7.0</not-before-version>
 	<not-from-version></not-from-version>
 </zapaddon>
