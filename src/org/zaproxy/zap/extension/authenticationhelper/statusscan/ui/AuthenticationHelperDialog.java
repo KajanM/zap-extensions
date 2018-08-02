@@ -19,15 +19,10 @@ package org.zaproxy.zap.extension.authenticationhelper.statusscan.ui;
 
 import java.awt.Dimension;
 import java.awt.Frame;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.JButton;
-import javax.swing.JPanel;
 
 import org.apache.log4j.Logger;
 import org.parosproxy.paros.Constant;
@@ -40,7 +35,6 @@ import org.zaproxy.zap.extension.users.ExtensionUserManagement;
 import org.zaproxy.zap.model.Context;
 import org.zaproxy.zap.model.Target;
 import org.zaproxy.zap.users.User;
-import org.zaproxy.zap.view.LayoutHelper;
 import org.zaproxy.zap.view.StandardFieldsDialog;
 
 public class AuthenticationHelperDialog extends StandardFieldsDialog {
@@ -85,7 +79,7 @@ public class AuthenticationHelperDialog extends StandardFieldsDialog {
 		addTargetSelectField(0, FIELD_START, target, true, false);
 		addComboField(0, FIELD_CONTEXT, new String[] {}, "");
 		addComboField(0, FIELD_USER, new String[] {}, "");
-		addCustomPanel(0, getChecklistPanel());
+		addCustomComponent(0, getChecklistPanel());
 		addUsersToUserComboField();
 		getChecklistPanel().runCheck();
 
@@ -111,30 +105,6 @@ public class AuthenticationHelperDialog extends StandardFieldsDialog {
 		return "authenticationhelper.dialog";
 	}
 
-	// TODO: get rid of reflection
-	@SuppressWarnings("unchecked")
-	private void addCustomPanel(int tabIndex, JPanel customPanel) {
-		Method incTabOffset;
-		try {
-			incTabOffset = getClass().getSuperclass().getDeclaredMethod("incTabOffset", int.class);
-			incTabOffset.setAccessible(true);
-
-			Field fieldTabPanels = getClass().getSuperclass().getDeclaredField("tabPanels");
-			fieldTabPanels.setAccessible(true);
-			Field fieldTabOffSets = getClass().getSuperclass().getDeclaredField("tabOffsets");
-			fieldTabOffSets.setAccessible(true);
-
-			List<JPanel> tabPanels = (List<JPanel>) fieldTabPanels.get(this);
-			List<Integer> tabOffsets = (List<Integer>) fieldTabOffSets.get(this);
-
-			tabPanels.get(tabIndex).add(customPanel, LayoutHelper.getGBC(0, tabOffsets.get(tabIndex), 2, 1.0D, 1.0D,
-					GridBagConstraints.BOTH, new Insets(4, 4, 4, 4)));
-
-			incTabOffset.invoke(this, tabIndex);
-		} catch (Exception e) {
-			logger.debug(e.getMessage(), e);
-		}
-	}
 
 	private AuthenticationConfigurationChecklistPanel getChecklistPanel() {
 		if (checklistPanel == null) {
