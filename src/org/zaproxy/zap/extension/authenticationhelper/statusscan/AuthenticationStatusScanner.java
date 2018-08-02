@@ -586,8 +586,7 @@ public class AuthenticationStatusScanner implements GenericScanner2 {
 
 	private HttpSender getHttpSender() {
 		if (httpSender == null) {
-			// TODO: update to HttpSender.AUTHENTICATION_HELPER_INITIATOR);
-			httpSender = new HttpSender(connectionParam, true, 14);
+			httpSender = new HttpSender(connectionParam, true, HttpSender.AUTHENTICATION_HELPER_INITIATOR);
 			httpSender.setRemoveUserDefinedAuthHeaders(true);
 			httpSender.setUser(user);
 			httpSender.setFollowRedirect(false);
