@@ -44,6 +44,7 @@ public class GroovyEngineWrapper extends DefaultEngineWrapper {
 		this(new GroovyScriptEngineFactory());
 	}
 
+	@SuppressWarnings("deprecation")
 	private GroovyEngineWrapper(GroovyScriptEngineFactory factory) {
 		super(factory.getScriptEngine());
 		this.factory = factory;

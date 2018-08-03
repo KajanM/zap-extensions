@@ -38,7 +38,7 @@
 	<classpathentry kind="lib" path="testlib/nanohttpd-websocket-2.3.1.jar"/>
 	<classpathentry kind="lib" path="lib/plugnhack-beta-10.zap"/>
 	<classpathentry kind="lib" path="lib/selenium-server-standalone-3.7.1.jar"/>
-	<classpathentry kind="lib" path="lib/zap-2.7.0.jar"/>
+	<classpathentry kind="lib" path="lib/zap-dev.jar" sourcepath="/zaproxy"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/commons-codec-1.9.jar"/>
 	<classpathentry kind="output" path="bin"/>

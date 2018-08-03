@@ -76,7 +76,7 @@
 			<compilerarg value="-Xlint:all"/>
 			<compilerarg value="-Xlint:-path"/>
 			<compilerarg value="-Xlint:-options"/>
-			<compilerarg value="-Werror"/>
+			<!-- <compilerarg value="-Werror"/> -->
 			<classpath>
 				<pathelement location="${build}"/>
 				<fileset dir="${dist.lib.dir}">

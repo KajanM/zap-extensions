@@ -82,6 +82,7 @@ import org.zaproxy.zap.utils.I18N;
  * <p>
  * Among other helper methods it allows to {@link #setUpZap() set up ZAP} and provides a {@link #nano HTTP test server}.
  */
+@SuppressWarnings("deprecation")
 @RunWith(MockitoJUnitRunner.class)
 public abstract class TestUtils {
 
@@ -138,7 +139,8 @@ public abstract class TestUtils {
      * @throws Exception if an error occurred while setting up the dirs or core classes.
      * @see #setUpMessages()
      */
-    protected void setUpZap() throws Exception {
+    @SuppressWarnings("deprecation")
+	protected void setUpZap() throws Exception {
         Constant.setZapInstall(zapInstallDir);
         Constant.setZapHome(zapHomeDir);
 
