@@ -156,7 +156,7 @@ public class ExtensionAuthenticationHelper extends ExtensionAdaptor
 	public void showCheckAuthenticationDialog(Target target) {
 		if (authenticationHelperDialog == null) {
 			authenticationHelperDialog = new AuthenticationHelperDialog(this, View.getSingleton().getMainFrame(),
-					new Dimension(660, 480));
+					new Dimension(660, 410));
 		}
 		if (authenticationHelperDialog.isVisible()) {
 			authenticationHelperDialog.toFront();
