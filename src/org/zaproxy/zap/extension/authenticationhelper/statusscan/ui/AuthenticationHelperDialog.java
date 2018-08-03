@@ -57,7 +57,7 @@ public class AuthenticationHelperDialog extends StandardFieldsDialog {
 	private Target target = null;
 
 	public AuthenticationHelperDialog(ExtensionAuthenticationHelper ext, Frame owner, Dimension dim) {
-		super(owner, "authenticationhelper.dialog.title", dim, new String[] { "authenticationhelper.dialog.title" });
+		super(owner, "authenticationhelper.dialog.title", dim);
 		this.extensionAuthenticationHelper = ext;
 	}
 
@@ -76,10 +76,10 @@ public class AuthenticationHelperDialog extends StandardFieldsDialog {
 
 		removeAllFields();
 
-		addTargetSelectField(0, FIELD_START, target, true, false);
-		addComboField(0, FIELD_CONTEXT, new String[] {}, "");
-		addComboField(0, FIELD_USER, new String[] {}, "");
-		addCustomComponent(0, getChecklistPanel());
+		addTargetSelectField(FIELD_START, target, true, false);
+		addComboField(FIELD_CONTEXT, new String[] {}, "");
+		addComboField(FIELD_USER, new String[] {}, "");
+		addCustomComponent(getChecklistPanel());
 		addUsersToUserComboField();
 		getChecklistPanel().runCheck();
 
