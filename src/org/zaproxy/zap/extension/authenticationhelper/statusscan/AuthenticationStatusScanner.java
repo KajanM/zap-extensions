@@ -394,7 +394,7 @@ public class AuthenticationStatusScanner implements GenericScanner2 {
 			IndicatorStatus loggedInIndicatorStatus,
 			IndicatorStatus loggedOutIndicatorStatus) {
 
-		AuthenticationStatus authenticationStatus = getAuthenticationStatus(
+		AuthenticationStatus authenticationStatus = determineAuthenticationStatus(
 				loggedInIndicatorStatus, loggedOutIndicatorStatus);
 		if (logger.isDebugEnabled()) {
 			logger.debug("Authentication status: " + authenticationStatus + " URI: " + historyReference.getURI());
@@ -426,7 +426,7 @@ public class AuthenticationStatusScanner implements GenericScanner2 {
 		}
 	}
 
-	private AuthenticationStatus getAuthenticationStatus(
+	private AuthenticationStatus determineAuthenticationStatus(
 			IndicatorStatus loggedInIndicatorStatus,
 			IndicatorStatus loggedOutIndicatorStatus) {
 		if (loggedInIndicatorStatus.equals(IndicatorStatus.COULD_NOT_VERIFY)
@@ -477,7 +477,7 @@ public class AuthenticationStatusScanner implements GenericScanner2 {
 		// out -> not found or not defined
 
 		if (inNotDefined && outNotFound)
-			return AuthenticationStatus.FAILED;
+			return AuthenticationStatus.SUCCESSFULL;
 
 		// in -> not defined
 		// out -> not defined
