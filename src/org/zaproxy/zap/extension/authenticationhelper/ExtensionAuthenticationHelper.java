@@ -32,6 +32,7 @@ import javax.swing.KeyStroke;
 
 import org.apache.log4j.Logger;
 import org.parosproxy.paros.Constant;
+import org.parosproxy.paros.control.Control;
 import org.parosproxy.paros.control.Control.Mode;
 import org.parosproxy.paros.extension.ExtensionAdaptor;
 import org.parosproxy.paros.extension.ExtensionHook;
@@ -41,6 +42,7 @@ import org.parosproxy.paros.extension.SessionChangedListener;
 import org.parosproxy.paros.model.Session;
 import org.parosproxy.paros.model.SiteNode;
 import org.parosproxy.paros.view.View;
+import org.zaproxy.zap.extension.authenticationhelper.autoconfig.AutomaticAuthenticationConfigurer;
 import org.zaproxy.zap.extension.authenticationhelper.statusscan.AuthenticationStatusScanController;
 import org.zaproxy.zap.extension.authenticationhelper.statusscan.AuthenticationStatusScanner;
 import org.zaproxy.zap.extension.authenticationhelper.statusscan.ui.AuthenticationHelperDialog;
@@ -48,6 +50,8 @@ import org.zaproxy.zap.extension.authenticationhelper.statusscan.ui.Authenticati
 import org.zaproxy.zap.extension.authenticationhelper.statusscan.ui.AuthenticationStatusPanel;
 import org.zaproxy.zap.extension.authenticationhelper.statusscan.ui.PopupMenuItemCheckAuthentication;
 import org.zaproxy.zap.extension.help.ExtensionHelp;
+import org.zaproxy.zap.extension.pscan.ExtensionPassiveScan;
+import org.zaproxy.zap.extension.pscan.PassiveScanner;
 import org.zaproxy.zap.model.ScanController;
 import org.zaproxy.zap.model.Target;
 import org.zaproxy.zap.users.User;
@@ -71,7 +75,8 @@ public class ExtensionAuthenticationHelper extends ExtensionAdaptor
 	 */
 	public static final String NAME = "ExtensionAuthenticationHelper";
 
-	public static final int EXTENSION_ORDER = 19;
+	//should be loaded after ExtensionPassiveScan(26)
+	public static final int EXTENSION_ORDER = 29;
 
 	private Icon authenticationIcon;
 
@@ -87,6 +92,8 @@ public class ExtensionAuthenticationHelper extends ExtensionAdaptor
 
 	private AuthenticationHelperOptionsPanel authenticationHelperOptionsPanel;
 
+	private PassiveScanner automaticAuthenticationConfigurer;
+	
 	public ExtensionAuthenticationHelper() {
 		super(NAME);
 		setOrder(EXTENSION_ORDER);
@@ -119,6 +126,11 @@ public class ExtensionAuthenticationHelper extends ExtensionAdaptor
 			
 			ExtensionHelp.enableHelpKey(getAuthenticationStatusPanel(), "authenticationhelper.tab");
 		}
+		
+		ExtensionPassiveScan extensionPassiveScan = Control.getSingleton().getExtensionLoader().getExtension(ExtensionPassiveScan.class);
+        if (extensionPassiveScan != null) {
+            extensionPassiveScan.addPassiveScanner(getAutoConfigurationPassiveScanner());
+        }
 	}
 
 	@Override
@@ -133,8 +145,6 @@ public class ExtensionAuthenticationHelper extends ExtensionAdaptor
 
 	@Override
 	public void unload() {
-		super.unload();
-
 		if (getView() != null) {
 			if (authenticationHelperDialog != null) {
 				authenticationHelperDialog.dispose();
@@ -145,6 +155,12 @@ public class ExtensionAuthenticationHelper extends ExtensionAdaptor
 			}
 			getView().getSessionDialog().removeParamPanel(authenticationHelperOptionsPanel);
 		}
+		
+		ExtensionPassiveScan extensionPassiveScan = Control.getSingleton().getExtensionLoader().getExtension(ExtensionPassiveScan.class);
+		if (extensionPassiveScan != null) {
+			extensionPassiveScan.removePassiveScanner(automaticAuthenticationConfigurer);
+		}
+		super.unload();
 	}
 
 	public void showCheckAuthenticationDialog(SiteNode node) {
@@ -172,6 +188,13 @@ public class ExtensionAuthenticationHelper extends ExtensionAdaptor
 		return authenticationStatusPanel;
 	}
 
+	private PassiveScanner getAutoConfigurationPassiveScanner() {
+		if(automaticAuthenticationConfigurer == null) {
+			automaticAuthenticationConfigurer = new AutomaticAuthenticationConfigurer(this);
+		}
+		return automaticAuthenticationConfigurer;
+	}
+	
 	private AuthenticationHelperOptionsPanel getOptionsAuthenticationHelperPanel() {
 		if (authenticationHelperOptionsPanel == null) {
 			authenticationHelperOptionsPanel = new AuthenticationHelperOptionsPanel(config);
@@ -235,6 +258,7 @@ public class ExtensionAuthenticationHelper extends ExtensionAdaptor
 				authenticationHelperDialog.reset();
 			}
 		}
+		getOptionsParam().eraseAutoConfiguredParams();
 	}
 
 	@Override
@@ -402,6 +426,7 @@ public class ExtensionAuthenticationHelper extends ExtensionAdaptor
 		if (View.isInitialised()) {
 			this.getAuthenticationStatusPanel().reset();
 		}
+		getOptionsParam().eraseAutoConfiguredParams();
 	}
 
 	public OptionsParamAuthenticationHelper getOptionsParam() {
