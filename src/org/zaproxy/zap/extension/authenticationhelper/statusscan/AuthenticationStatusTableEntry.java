@@ -22,7 +22,7 @@ import org.zaproxy.zap.view.table.DefaultHistoryReferencesTableEntry;
 
 public class AuthenticationStatusTableEntry extends DefaultHistoryReferencesTableEntry {
 
-	public enum AuthenticationStatus {
+	public static enum AuthenticationStatus {
 		//@formatter:off                      
 		SUCCESSFULL,                  
 		FAILED,             

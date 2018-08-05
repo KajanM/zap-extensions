@@ -65,7 +65,7 @@ public class AuthenticationStatusScanner implements GenericScanner2 {
 		//@formatter:on
 	};
 
-	public enum IndicatorStatus {
+	public static enum IndicatorStatus {
 		//@formatter:off                      
 		FOUND,                  
 		NOT_FOUND,             
@@ -426,7 +426,7 @@ public class AuthenticationStatusScanner implements GenericScanner2 {
 		}
 	}
 
-	private AuthenticationStatus determineAuthenticationStatus(
+	public AuthenticationStatus determineAuthenticationStatus(
 			IndicatorStatus loggedInIndicatorStatus,
 			IndicatorStatus loggedOutIndicatorStatus) {
 		if (loggedInIndicatorStatus.equals(IndicatorStatus.COULD_NOT_VERIFY)
@@ -471,7 +471,7 @@ public class AuthenticationStatusScanner implements GenericScanner2 {
 		// if in not found then out not found
 
 		if (inNotFound)
-			return AuthenticationStatus.CONFLICTING;
+			return AuthenticationStatus.UNKNOWN;
 
 		// in -> not defined
 		// out -> not found or not defined
