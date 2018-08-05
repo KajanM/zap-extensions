@@ -60,8 +60,6 @@ import org.zaproxy.zap.view.ZapMenuItem;
  * <li>guided authentication configuration</li>
  * <li>authentication status scanning</li>
  * </ul>
- * 
- * @since 2.7.0
  */
 public class ExtensionAuthenticationHelper extends ExtensionAdaptor
 		implements SessionChangedListener, ScanController<AuthenticationStatusScanner> {
