@@ -1,6 +1,6 @@
 <zapaddon>
 	<name>Authentication Helper</name>
-	<version>1.0.0</version>
+	<version>1.1.0</version>
 	<status>alpha</status>
 	<description>An add-on for automated authentication configuration,
 		guided authentication configuration and authentication status scanning
@@ -9,6 +9,8 @@
 	<url></url>
 	<changes>
 	<![CDATA[
+	updated for ZAP 2.8.0<br>
+	automated authentication configuration :)
 	]]>
 	</changes>
 	<extensions>
