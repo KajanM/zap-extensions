@@ -40,6 +40,7 @@ public class OptionsParamAuthenticationHelper extends AbstractParam {
 																 ".*.jpeg",
 																 ".*.jpg",
 																 ".*.png",
+																 ".*.ico",
 																 ".*logout.*",
 																 ".*login.*"};
 	//@formatter:on
