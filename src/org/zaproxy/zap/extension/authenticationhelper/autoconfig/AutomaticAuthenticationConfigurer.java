@@ -20,7 +20,9 @@ import org.parosproxy.paros.network.HttpMessage;
 import org.parosproxy.paros.view.View;
 import org.zaproxy.zap.authentication.AuthenticationCredentials;
 import org.zaproxy.zap.authentication.AuthenticationMethod;
+import org.zaproxy.zap.authentication.FormBasedAuthenticationMethodType;
 import org.zaproxy.zap.authentication.HttpAuthenticationMethodType.HttpAuthenticationMethod;
+import org.zaproxy.zap.authentication.JsonBasedAuthenticationMethodType;
 import org.zaproxy.zap.authentication.ManualAuthenticationMethodType.ManualAuthenticationMethod;
 import org.zaproxy.zap.authentication.UsernamePasswordAuthenticationCredentials;
 import org.zaproxy.zap.extension.authenticationhelper.ExtensionAuthenticationHelper;
@@ -31,6 +33,9 @@ import org.zaproxy.zap.model.Context;
 import org.zaproxy.zap.model.StructuralSiteNode;
 import org.zaproxy.zap.users.User;
 
+import net.htmlparser.jericho.Element;
+import net.htmlparser.jericho.FormControlType;
+import net.htmlparser.jericho.HTMLElementName;
 import net.htmlparser.jericho.Source;
 
 /**
@@ -182,7 +187,7 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 							+ msg.getRequestHeader().getURI());
 		}
 
-		AuthenticationScheme neededAuthenticationScheme = findNeededAuthenticationScheme(msg);
+		AuthenticationScheme neededAuthenticationScheme = findNeededAuthenticationScheme(msg, source);
 
 		if (neededAuthenticationScheme == null) {
 			// unsupported scheme or no authentication needed
@@ -226,6 +231,7 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 	private AuthenticationMethod setupAuthenticationMethod(AuthenticationScheme neededAuthenticationScheme,
 			HttpMessage msg, List<Context> contexts) {
 		AuthenticationMethod authenticationMethod = null;
+		StringBuilder sb;
 		switch (neededAuthenticationScheme) {
 		case HTTP_BASIC:
 			// intentional fall through
@@ -235,10 +241,24 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 			authenticationMethod = setupHttpAuthenticationMethod(neededAuthenticationScheme, msg, contexts);
 			break;
 		case FORM:
-			// TODO add logic to configure form based authentication
+			// the context id is not used by the method, so passing dummy value
+			authenticationMethod = new FormBasedAuthenticationMethodType().createAuthenticationMethod(-1);
+			sb = new StringBuilder();
+			sb.append("Auto config: form based authentication method set for ");
+			sb.append( msg.getRequestHeader().getURI());
+			sb.append("\n");
+			sb.append("Auto config: please login to complete the configuration");
+			View.getSingleton().getOutputPanel().append(sb.toString());
 			break;
 		case JSON:
-			// TODO add logic to configure JSON based authentication
+			// the context id is not used by the method, so passing dummy value
+			authenticationMethod = new JsonBasedAuthenticationMethodType().createAuthenticationMethod(-1);
+			sb = new StringBuilder();
+			sb.append("Auto config: json based authentication method set for ");
+			sb.append( msg.getRequestHeader().getURI());
+			sb.append("\n");
+			sb.append("Auto config: please login to complete the configuration");
+			View.getSingleton().getOutputPanel().append(sb.toString());
 			break;
 		}
 		return authenticationMethod;
@@ -338,11 +358,42 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 		if (isHttpScheme(msg)) {
 			return resolveHttpScheme(msg.getResponseHeader().getHeader(HttpHeader.WWW_AUTHENTICATE));
 		}
-		// TODO: add logic to detect post based authentication
+
+		AuthenticationScheme postBasedScheme = checkAndGetPostBasedScheme(source);
+		if (postBasedScheme != null) {
+			return postBasedScheme;
+		}
 		return null;
 	}
 
-	private AuthenticationScheme resolveScheme(String wwwAuthenticateHeader) {
+	private AuthenticationScheme checkAndGetPostBasedScheme(Source source) {
+		int passwordFieldCount;
+		List<Element> forms = source.getAllElements(HTMLElementName.FORM);
+		for (Element form : forms) {
+			passwordFieldCount = 0;
+			for (Element inputElement : form.getAllElements(HTMLElementName.INPUT)) {
+				if (inputElement.getFormControl().getFormControlType().equals(FormControlType.PASSWORD)) {
+					passwordFieldCount++;
+				}
+			}
+			if (passwordFieldCount == 1) {
+				String encoding = form.getAttributeValue("enctype");
+				if (encoding != null && !encoding.isEmpty() && encoding.equalsIgnoreCase("application/json")) {
+					return AuthenticationScheme.JSON;
+				}
+				return AuthenticationScheme.FORM;
+			}
+		}
+		return null;
+	}
+
+	private boolean isHttpScheme(HttpMessage msg) {
+		boolean isHttpAuth = msg.getResponseHeader().getStatusCode() == HttpStatus.SC_UNAUTHORIZED
+				|| msg.getRequestHeader().getHeader(HttpHeader.AUTHORIZATION) != null;
+		return isHttpAuth;
+	}
+
+	private AuthenticationScheme resolveHttpScheme(String wwwAuthenticateHeader) {
 		String[] params = wwwAuthenticateHeader.split(" ");
 		if (params[0].equalsIgnoreCase("basic")) {
 			return AuthenticationScheme.HTTP_BASIC;
