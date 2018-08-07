@@ -191,7 +191,7 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 
 		// ----- got some clue to auto configure authentication method ------
 
-		List<Context> contexts = prepareContextsForConfiguration(msg);
+		List<Context> contexts = getContexts(msg);
 
 		if (contexts == null) {
 			return; // error message already logged, no point in continuing
@@ -296,7 +296,19 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 		return authenticationMethod;
 	}
 
-	private List<Context> prepareContextsForConfiguration(HttpMessage msg) {
+	/**
+	 * Returns a {@code List} of {@link Context} that the input {@code HttpMessage}
+	 * belongs to. If no {@code Context} is defined yet, then a new {@code Context}
+	 * is created and added to the {@link Session}.
+	 * <p>
+	 * If the {@code URI} of the input {@code HttpMessage} is
+	 * {@code http://192.168.56.101/bodgeit/login.jsp} then
+	 * {@code http://192.168.56.101/bodgeit.*} is included to the new
+	 * {@code Context}.
+	 * 
+	 * @param msg the {@code HttpMessage}
+	 */
+	private List<Context> getContexts(HttpMessage msg) {
 		List<Context> contexts = getConfiguredContexts(msg);
 		if (contexts == null) {
 			contexts = new ArrayList<>();
@@ -304,10 +316,10 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 
 		if (contexts.isEmpty()) {
 			Session session = Model.getSingleton().getSession();
-			Context newContext = session.getNewContext(msg.getRequestHeader().getURI().toString());
+			StructuralSiteNode ssn = new StructuralSiteNode(msg.getHistoryRef().getSiteNode().getParent());
+			Context newContext = session.getNewContext(ssn.getName());
 			try {
-				newContext.addIncludeInContextRegex(
-						new StructuralSiteNode(msg.getHistoryRef().getSiteNode()).getRegexPattern());
+				newContext.addIncludeInContextRegex(ssn.getRegexPattern());
 				logger.info("Created new context, " + newContext.getName());
 			} catch (DatabaseException e) {
 				logger.error("Auto-configuration fialed, unable to create a context for URI "
