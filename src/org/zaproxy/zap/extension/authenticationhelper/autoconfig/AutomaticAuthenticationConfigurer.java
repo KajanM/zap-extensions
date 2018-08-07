@@ -334,11 +334,9 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 		return contexts;
 	}
 
-	private AuthenticationScheme findNeededAuthenticationScheme(HttpMessage msg) {
-		boolean isHttpAuth = msg.getResponseHeader().getStatusCode() == HttpStatus.SC_UNAUTHORIZED
-				|| msg.getRequestHeader().getHeader(HttpHeader.AUTHORIZATION) != null;
-		if (isHttpAuth) {
-			return resolveScheme(msg.getResponseHeader().getHeader(HttpHeader.WWW_AUTHENTICATE));
+	private AuthenticationScheme findNeededAuthenticationScheme(HttpMessage msg, Source source) {
+		if (isHttpScheme(msg)) {
+			return resolveHttpScheme(msg.getResponseHeader().getHeader(HttpHeader.WWW_AUTHENTICATE));
 		}
 		// TODO: add logic to detect post based authentication
 		return null;
