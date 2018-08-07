@@ -97,45 +97,49 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 				if(authorizationHeader == null || authorizationHeader.isEmpty() || !authorizationHeader.startsWith("Basic")) {
 					return;
 				}
-				
-				if (!autoConfiguredParam.getConfiguredUsers().isEmpty()) {
-					// user already configured, only setup if different user
-					UsernamePasswordAuthenticationCredentials credentials = getUsernamePasswordCredentials(
-							authorizationHeader);
-					if (credentials == null) {
-						return;
-					}
-
-					UsernamePasswordAuthenticationCredentials oldCredentials;
-					for (User user : autoConfiguredParam.getConfiguredUsers()) {
-						oldCredentials = (UsernamePasswordAuthenticationCredentials) user
-								.getAuthenticationCredentials();
-						if (oldCredentials.getUsername().equals(credentials.getUsername())) {
-							// user already configure with this credentials, skipping
-							return;
-						}
-					}
-
-					// new credentials captured
-					autoConfiguredParam.setupUser(credentials);
-					return;
-				}
-
-				UsernamePasswordAuthenticationCredentials credentials = getUsernamePasswordCredentials(
-						authorizationHeader);
-				if (credentials == null) {
-					return;
-				}
-
-				autoConfiguredParam.setupUser(credentials);
-
-				View.getSingleton().getOutputPanel()
-						.append("Auto config: configured new user for " + msg.getRequestHeader().getURI() + "\n");
+				setupUserForHttpScheme(msg, autoConfiguredParam, authorizationHeader);
 			}
 		} catch (URIException e) {
 			logger.error("Unable to get host name from URI " + msg.getRequestHeader().getURI(), e);
 			return;
 		}
+	}
+
+	private void setupUserForHttpScheme(HttpMessage msg, AuthenticationAutoConfigurationParam autoConfiguredParam,
+			String authorizationHeader) {
+		if (!autoConfiguredParam.getConfiguredUsers().isEmpty()) {
+			// user already configured, only setup if different user
+			UsernamePasswordAuthenticationCredentials credentials = getUsernamePasswordCredentials(
+					authorizationHeader);
+			if (credentials == null) {
+				return;
+			}
+
+			UsernamePasswordAuthenticationCredentials oldCredentials;
+			for (User user : autoConfiguredParam.getConfiguredUsers()) {
+				oldCredentials = (UsernamePasswordAuthenticationCredentials) user
+						.getAuthenticationCredentials();
+				if (oldCredentials.getUsername().equals(credentials.getUsername())) {
+					// user already configure with this credentials, skipping
+					return;
+				}
+			}
+
+			// new credentials captured
+			autoConfiguredParam.setupUser(credentials);
+			return;
+		}
+
+		UsernamePasswordAuthenticationCredentials credentials = getUsernamePasswordCredentials(
+				authorizationHeader);
+		if (credentials == null) {
+			return;
+		}
+
+		autoConfiguredParam.setupUser(credentials);
+
+		View.getSingleton().getOutputPanel()
+				.append("Auto config: configured new user for " + msg.getRequestHeader().getURI() + "\n");
 	}
 
 	/**
