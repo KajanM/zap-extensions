@@ -17,13 +17,16 @@ import org.parosproxy.paros.model.Model;
 import org.parosproxy.paros.model.Session;
 import org.parosproxy.paros.network.HttpHeader;
 import org.parosproxy.paros.network.HttpMessage;
+import org.parosproxy.paros.network.HttpRequestHeader;
 import org.parosproxy.paros.view.View;
 import org.zaproxy.zap.authentication.AuthenticationCredentials;
 import org.zaproxy.zap.authentication.AuthenticationMethod;
 import org.zaproxy.zap.authentication.FormBasedAuthenticationMethodType;
+import org.zaproxy.zap.authentication.FormBasedAuthenticationMethodType.FormBasedAuthenticationMethod;
 import org.zaproxy.zap.authentication.HttpAuthenticationMethodType.HttpAuthenticationMethod;
 import org.zaproxy.zap.authentication.JsonBasedAuthenticationMethodType;
 import org.zaproxy.zap.authentication.ManualAuthenticationMethodType.ManualAuthenticationMethod;
+import org.zaproxy.zap.authentication.PostBasedAuthenticationMethodType.PostBasedAuthenticationMethod;
 import org.zaproxy.zap.authentication.UsernamePasswordAuthenticationCredentials;
 import org.zaproxy.zap.extension.authenticationhelper.ExtensionAuthenticationHelper;
 import org.zaproxy.zap.extension.authenticationhelper.OptionsParamAuthenticationHelper;
@@ -31,6 +34,7 @@ import org.zaproxy.zap.extension.pscan.PassiveScanThread;
 import org.zaproxy.zap.extension.pscan.PassiveScanner;
 import org.zaproxy.zap.model.Context;
 import org.zaproxy.zap.model.StructuralSiteNode;
+import org.zaproxy.zap.spider.parser.SpiderParserListener;
 import org.zaproxy.zap.users.User;
 
 import net.htmlparser.jericho.Element;
@@ -50,11 +54,15 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 		HTTP_BASIC,
 		HTTP_DIGEST,
 		HTTP_NTLM,
-		FORM,
-		JSON;
+		POST_FORM,
+		POST_JSON;
 		
 		public static boolean isHttpScheme(AuthenticationScheme scheme) {
 			return scheme.toString().startsWith("HTTP_");
+		}
+		
+		public static boolean isPostScheme(AuthenticationScheme scheme) {
+			return scheme.toString().startsWith("POST_");
 		}
 	}
 	//@formatter:on
@@ -82,26 +90,127 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 			String domain = msg.getRequestHeader().getURI().getHost();
 			AuthenticationAutoConfigurationParam autoConfiguredParam = getFileConfiguration()
 					.getAutoConfiguredParam(domain);
-
+	
 			if (autoConfiguredParam == null) {
 				// no authentication needed or when scanning the response the scanner did not
 				// find any clue to setup appropriate authentication method
 				return;
 			}
-
-			// grabbing the password from HttpMessage and automatically setting up user (only
+	
+			// grabbing the password from HttpMessage and automatically setting up user
+			// (only
 			// supported for basic, post schemes)
-			if (autoConfiguredParam.getScheme().equals(AuthenticationScheme.HTTP_BASIC)) {
+			AuthenticationScheme configuredScheme = autoConfiguredParam.getScheme();
+			if (configuredScheme.equals(AuthenticationScheme.HTTP_BASIC)) {
 				String authorizationHeader = msg.getRequestHeader().getHeader(HttpHeader.AUTHORIZATION);
-				
-				if(authorizationHeader == null || authorizationHeader.isEmpty() || !authorizationHeader.startsWith("Basic")) {
+	
+				if (authorizationHeader == null || authorizationHeader.isEmpty()
+						|| !authorizationHeader.startsWith("Basic")) {
 					return;
 				}
 				setupUserForHttpScheme(msg, autoConfiguredParam, authorizationHeader);
+				return;
 			}
+	
+			if (AuthenticationScheme.isPostScheme(configuredScheme)) {
+				String loginUri = autoConfiguredParam.getMsg().getRequestHeader().getURI().toString();
+				String currentUri = msg.getRequestHeader().getURI().toString();
+				boolean isRelevantPostRequest = loginUri.equals(currentUri)
+						&& msg.getRequestHeader().getMethod().equals(HttpRequestHeader.POST)
+						&& msg.getRequestBody() != null && !msg.getRequestBody().toString().isEmpty();
+				if (isRelevantPostRequest) {
+					List<Context> contexts = autoConfiguredParam.getContexts();
+					if (!(contexts.get(0).getAuthenticationMethod() instanceof PostBasedAuthenticationMethod)) {
+						return;
+					}
+	
+					if (contexts.get(0).getAuthenticationMethod() instanceof FormBasedAuthenticationMethod) {
+						FormBasedAuthenticationMethod authenticationMethod = (FormBasedAuthenticationMethod) autoConfiguredParam
+								.getContexts().get(0).getAuthenticationMethod();
+						authenticationMethod.setLoginRequest(msg.getHistoryRef().getSiteNode());
+						for (Context context : contexts) {
+							context.setAuthenticationMethod(authenticationMethod);
+						}
+	
+						authHelperExtension.getOptionsParam().saveAutoConfiguredParams();
+						Model.getSingleton().getSession().saveAllContexts();
+						logger.info("Login request URI and body configured for form based auth scheme, URI:"
+								+ msg.getRequestHeader().getURI());
+	
+						Source source = new Source(autoConfiguredParam.getMsg().getResponseBody().toString());
+						List<Element> forms = source.getAllElements(HTMLElementName.FORM);
+						int passwordFieldCount;
+						String usernameFieldName = null;
+						String passwordFieldName = null;
+						for (Element form : forms) {
+							passwordFieldCount = 0;
+							for (Element inputElement : form.getAllElements(HTMLElementName.INPUT)) {
+								if (inputElement.getFormControl().getFormControlType()
+										.equals(FormControlType.PASSWORD)) {
+									passwordFieldCount++;
+								}
+							}
+	
+							if (passwordFieldCount == 1) {
+								for (Element element : form.getAllElements(HTMLElementName.INPUT)) {
+									if (element.getFormControl().getFormControlType().equals(FormControlType.TEXT)) {
+										usernameFieldName = element.getFormControl().getName();
+									}
+									if (element.getFormControl().getFormControlType().equals(FormControlType.PASSWORD)) {
+										passwordFieldName = element.getFormControl().getName();
+									}
+								}
+								
+								if (usernameFieldName == null || usernameFieldName.isEmpty()) {
+									logger.warn("could not get the username field name from the form");
+									return;
+								}
+								if (passwordFieldName == null || passwordFieldName.isEmpty()) {
+									logger.warn("could not get the password field name from the form");
+									return;
+								}
+								if(logger.isDebugEnabled()) {
+									logger.debug("extracted username, password field names : " + usernameFieldName + " ," + passwordFieldName);
+								}
+								break;
+							}
+						}
+						Map<String, String> postParams = contexts.get(0).getPostParamParser().parse(msg.getRequestBody().toString());
+						String username = postParams.get(usernameFieldName);
+						String password = postParams.get(passwordFieldName);
+						
+						if(username == null || username.isEmpty()) {
+							logger.warn("could not parse the username value from the post body");
+						}
+						
+						if(password == null || password.isEmpty()) {
+							logger.warn("could not parse the password value from the post body");
+						}
+						logger.debug("parsed username, password values : " + username + " ," + password);
+						UsernamePasswordAuthenticationCredentials credentials = new UsernamePasswordAuthenticationCredentials(username, password);
+	
+						UsernamePasswordAuthenticationCredentials oldCredentials;
+						for (User user : autoConfiguredParam.getConfiguredUsers()) {
+							oldCredentials = (UsernamePasswordAuthenticationCredentials) user.getAuthenticationCredentials();
+							if (oldCredentials.getUsername().equals(credentials.getUsername())) {
+								// user already configure with this credentials, skipping
+								return;
+							}
+						}
+	
+						// new credentials captured
+						autoConfiguredParam.setupUser(credentials);
+						View.getSingleton().getOutputPanel()
+						.append("Auto config: configured new user for " + msg.getRequestHeader().getURI() + "\n");
+					}
+				}
+			}
+	
 		} catch (URIException e) {
 			logger.error("Unable to get host name from URI " + msg.getRequestHeader().getURI(), e);
 			return;
+		} catch (Exception e) {
+			logger.error("Could not auto configuer user", e);
 		}
 	}
 
@@ -109,16 +218,14 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 			String authorizationHeader) {
 		if (!autoConfiguredParam.getConfiguredUsers().isEmpty()) {
 			// user already configured, only setup if different user
-			UsernamePasswordAuthenticationCredentials credentials = getUsernamePasswordCredentials(
-					authorizationHeader);
+			UsernamePasswordAuthenticationCredentials credentials = getUsernamePasswordCredentials(authorizationHeader);
 			if (credentials == null) {
 				return;
 			}
 
 			UsernamePasswordAuthenticationCredentials oldCredentials;
 			for (User user : autoConfiguredParam.getConfiguredUsers()) {
-				oldCredentials = (UsernamePasswordAuthenticationCredentials) user
-						.getAuthenticationCredentials();
+				oldCredentials = (UsernamePasswordAuthenticationCredentials) user.getAuthenticationCredentials();
 				if (oldCredentials.getUsername().equals(credentials.getUsername())) {
 					// user already configure with this credentials, skipping
 					return;
@@ -130,8 +237,7 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 			return;
 		}
 
-		UsernamePasswordAuthenticationCredentials credentials = getUsernamePasswordCredentials(
-				authorizationHeader);
+		UsernamePasswordAuthenticationCredentials credentials = getUsernamePasswordCredentials(authorizationHeader);
 		if (credentials == null) {
 			return;
 		}
@@ -186,9 +292,8 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 
 		// ------ authentication method not configured yet ------
 		if (logger.isDebugEnabled()) {
-			logger.debug(
-					"Authentication method is not yet configured, scanning to configure one if possible, URI: "
-							+ msg.getRequestHeader().getURI());
+			logger.debug("Authentication method is not yet configured, scanning to configure one if possible, URI: "
+					+ msg.getRequestHeader().getURI());
 		}
 
 		AuthenticationScheme neededAuthenticationScheme = findNeededAuthenticationScheme(msg, source);
@@ -244,22 +349,22 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 		case HTTP_NTLM:
 			authenticationMethod = setupHttpAuthenticationMethod(neededAuthenticationScheme, msg, contexts);
 			break;
-		case FORM:
+		case POST_FORM:
 			// the context id is not used by the method, so passing dummy value
 			authenticationMethod = new FormBasedAuthenticationMethodType().createAuthenticationMethod(-1);
 			sb = new StringBuilder();
 			sb.append("Auto config: form based authentication method set for ");
-			sb.append( msg.getRequestHeader().getURI());
+			sb.append(msg.getRequestHeader().getURI());
 			sb.append("\n");
-			sb.append("Auto config: please login to complete the configuration");
+			sb.append("Auto config: please login to complete the configuration\n");
 			View.getSingleton().getOutputPanel().append(sb.toString());
 			break;
-		case JSON:
+		case POST_JSON:
 			// the context id is not used by the method, so passing dummy value
 			authenticationMethod = new JsonBasedAuthenticationMethodType().createAuthenticationMethod(-1);
 			sb = new StringBuilder();
 			sb.append("Auto config: json based authentication method set for ");
-			sb.append( msg.getRequestHeader().getURI());
+			sb.append(msg.getRequestHeader().getURI());
 			sb.append("\n");
 			sb.append("Auto config: please login to complete the configuration");
 			View.getSingleton().getOutputPanel().append(sb.toString());
@@ -330,7 +435,8 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 	 * {@code http://192.168.56.101/bodgeit.*} is included to the new
 	 * {@code Context}.
 	 * 
-	 * @param msg the {@code HttpMessage}
+	 * @param msg
+	 *            the {@code HttpMessage}
 	 */
 	private List<Context> getContexts(HttpMessage msg) {
 		List<Context> contexts = getConfiguredContexts(msg);
@@ -383,9 +489,9 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 			if (passwordFieldCount == 1) {
 				String encoding = form.getAttributeValue("enctype");
 				if (encoding != null && !encoding.isEmpty() && encoding.equalsIgnoreCase("application/json")) {
-					return AuthenticationScheme.JSON;
+					return AuthenticationScheme.POST_JSON;
 				}
-				return AuthenticationScheme.FORM;
+				return AuthenticationScheme.POST_FORM;
 			}
 		}
 		return null;

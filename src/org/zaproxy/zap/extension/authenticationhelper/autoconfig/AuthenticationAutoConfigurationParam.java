@@ -148,6 +148,10 @@ public class AuthenticationAutoConfigurationParam implements Serializable {
 		configuredUsers = users;
 	}
 
+	public HttpMessage getMsg() {
+		return msg;
+	}
+
 	private void createAndRegisterUserToContexts(AuthenticationCredentials credentials) {
 		User newUser;
 		String username = null;
