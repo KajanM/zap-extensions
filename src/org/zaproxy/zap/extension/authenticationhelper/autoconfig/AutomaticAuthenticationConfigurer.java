@@ -102,6 +102,9 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 			// supported for basic, post schemes)
 			AuthenticationScheme configuredScheme = autoConfiguredParam.getScheme();
 			if (configuredScheme.equals(AuthenticationScheme.HTTP_BASIC)) {
+				if(msg.getHistoryRef().getHistoryType() != HistoryReference.TYPE_PROXIED) {
+					return;
+				}
 				String authorizationHeader = msg.getRequestHeader().getHeader(HttpHeader.AUTHORIZATION);
 	
 				if (authorizationHeader == null || authorizationHeader.isEmpty()
@@ -137,6 +140,9 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 						logger.info("Login request URI and body configured for form based auth scheme, URI:"
 								+ msg.getRequestHeader().getURI());
 	
+						if(msg.getHistoryRef().getHistoryType() != HistoryReference.TYPE_PROXIED) {
+							return;
+						}
 						Source source = new Source(autoConfiguredParam.getMsg().getResponseBody().toString());
 						List<Element> forms = source.getAllElements(HTMLElementName.FORM);
 						int passwordFieldCount;
@@ -585,7 +591,8 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 
 	@Override
 	public boolean appliesToHistoryType(int historyType) {
-		return historyType == HistoryReference.TYPE_PROXIED;
+		return historyType == HistoryReference.TYPE_PROXIED ||
+			   historyType == HistoryReference.TYPE_SPIDER;
 	}
 
 	@Override
