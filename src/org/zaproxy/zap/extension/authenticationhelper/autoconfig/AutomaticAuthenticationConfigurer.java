@@ -452,16 +452,25 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 
 		if (contexts.isEmpty()) {
 			Session session = Model.getSingleton().getSession();
+			String contextName;
+			String regexPattern;
 			StructuralSiteNode ssn = new StructuralSiteNode(msg.getHistoryRef().getSiteNode().getParent());
-			Context newContext = session.getNewContext(ssn.getName());
-			try {
-				newContext.addIncludeInContextRegex(ssn.getRegexPattern());
-				logger.info("Created new context, " + newContext.getName());
-			} catch (DatabaseException e) {
-				logger.error("Auto-configuration fialed, unable to create a context for URI "
-						+ msg.getRequestHeader().getURI(), e);
-				return null;
+			if (ssn.getHistoryReference() != null) {
+				contextName = ssn.getName();
+				try {
+					regexPattern = ssn.getRegexPattern();
+				} catch (DatabaseException e) {
+					logger.error("Auto-configuration fialed, unable to create a context for URI "
+							+ msg.getRequestHeader().getURI(), e);
+					return null;
+				}
+			} else {
+				contextName = msg.getRequestHeader().getURI().toString();
+				regexPattern = msg.getRequestHeader().getURI().toString();
 			}
+			Context newContext = session.getNewContext(contextName);
+			newContext.addIncludeInContextRegex(regexPattern);
+			logger.info("Created new context, " + newContext.getName());
 			Model.getSingleton().getSession().saveContext(newContext);
 			contexts.add(newContext);
 			View.getSingleton().getOutputPanel()
