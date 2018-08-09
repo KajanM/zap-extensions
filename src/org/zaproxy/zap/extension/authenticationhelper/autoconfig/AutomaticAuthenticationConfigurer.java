@@ -1,5 +1,6 @@
 package org.zaproxy.zap.extension.authenticationhelper.autoconfig;
 
+import java.net.URLDecoder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -195,6 +196,9 @@ public class AutomaticAuthenticationConfigurer implements PassiveScanner {
 							logger.warn("could not parse the password value from the post body");
 						}
 						logger.debug("parsed username, password values : " + username + " ," + password);
+						username = URLDecoder.decode(username, "UTF-8");
+						password = URLDecoder.decode(password, "UTF-8");
+
 						UsernamePasswordAuthenticationCredentials credentials = new UsernamePasswordAuthenticationCredentials(
 								username, password);
 
